@@ -1,0 +1,26 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# ---- Django ----
+db.sqlite3           # default dev database
+*.log
+/media/              # user-uploaded media, if any
+/staticfiles/        # if you collect static to this folder
+
+# ---- Virtual environments ----
+# Pipenv creates a venv outside the project by default,
+# but ignore anyway in case someone makes a local one
+venv/
+env/
+*.env                # local environment variables (if you use a .env file)
+
+# ---- IDE / OS files ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
