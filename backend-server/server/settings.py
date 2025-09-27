@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'dashboards',
-    'gamesession'
+    'gamesession',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
