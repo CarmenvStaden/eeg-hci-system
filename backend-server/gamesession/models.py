@@ -17,7 +17,7 @@ class EEGReading(models.Model):
     session = models.ForeignKey(
         Session, 
         on_delete=models.CASCADE, 
-        related_name="readings")
+        related_name="eeg_readings")
     timestamp = models.DateTimeField()
     attention = models.FloatField()
     meditation = models.FloatField()
