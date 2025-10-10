@@ -36,6 +36,7 @@ class EEGReading(models.Model):
     high_beta  = models.FloatField()
     low_gamma = models.FloatField()
     mid_gamma = models.FloatField()
+    # add marker, blinked, level_index variables
 
 class Report(models.Model):
     session = models.OneToOneField(Session, on_delete=models.CASCADE, related_name="report")
