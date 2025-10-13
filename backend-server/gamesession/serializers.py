@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Session, EEGReading
+from .models import Session, EEGReading, Game, Prescription
 
 class EEGReadingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,3 +18,13 @@ class SessionSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "game_type", "game_level",
                   "start_time", "end_time", "eeg_readings"]
         # read_only_fields = ["id", "user", "start_time"] # not set by client
+
+class GameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Game
+        fields = "__all__"
+
+class PrescriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prescription
+        fields = ["id", "doctor", "patient", "game", "notes", "created_at", "active"]
