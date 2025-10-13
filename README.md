@@ -16,6 +16,10 @@ _Clone the Repo_
 
  ### Daily Development (from backend-server directory)  
 
+ _Start DB Server_
+ 
+ `brew services start postgresql`
+
 _Create/Activate the virtual environment_  
 
 `pipenv shell`
