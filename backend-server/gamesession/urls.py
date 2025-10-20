@@ -9,5 +9,4 @@ urlpatterns = [
     path('sessions/start/', SessionStartView.as_view(), name='session-start'), # start a session
     path('sessions/<int:session_id>/end/', SessionEndView.as_view(), name='session-end'), # end a session
     path('eeg-readings/', EEGReadingCreateView.as_view(), name="eeg-reading-create"), # where Unity streams eeg-data
-
 ]

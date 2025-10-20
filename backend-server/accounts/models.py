@@ -6,7 +6,7 @@ class CustomUser(AbstractUser):
     is_patient = models.BooleanField(default=False)
     is_doctor = models.BooleanField(default=False)
 
-    email = models.EmailField(unique=True) # replaces username as unique identifier
+    email = models.EmailField(unique=True, blank=False, null=False) # replaces username as unique identifier
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"] # username still required

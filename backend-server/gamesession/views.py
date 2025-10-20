@@ -35,8 +35,9 @@ class PrescriptionListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request): # incoming: client -> server
-        if not request.user.is_doctor:
-            return Response({"error": "Only specialists can assign games"}, status=status.HTTP_403_FORBIDDEN)
+        data = request.data.copy()
+        if request.user.is_authenticated and request.user.is_doctor: # if logged in user is doctor and authenticated, automatically assigns to prescription
+            data["doctor"] = request.user.id
         
         serializer = PrescriptionSerializer(data=request.data) # deserialize list from client (JSON) to server (model instance)
         if serializer.is_valid(): # if matches formatting in models
