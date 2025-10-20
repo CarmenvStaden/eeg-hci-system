@@ -30,4 +30,4 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         model = Prescription
         # fields = "__all__" # for testing
         fields = ["id", "doctor", "patient", "game", "notes", "created_at", "active"]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "doctor"]
