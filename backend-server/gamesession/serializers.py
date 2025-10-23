@@ -15,8 +15,9 @@ class SessionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Session
-        fields = ["id", "user", "game_type", "game_level",
-                  "start_time", "end_time", "eeg_readings"]
+        fields = "__all__" # testing
+        # fields = ["id", "user", "game_type", "game_level",
+        #           "start_time", "end_time", "eeg_readings"]
         # read_only_fields = ["id", "user", "start_time"] # not set by client
 
 class GameSerializer(serializers.ModelSerializer):
@@ -27,4 +28,6 @@ class GameSerializer(serializers.ModelSerializer):
 class PrescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prescription
+        # fields = "__all__" # for testing
         fields = ["id", "doctor", "patient", "game", "notes", "created_at", "active"]
+        read_only_fields = ["id", "created_at", "doctor"]

@@ -7,9 +7,13 @@ class CustomUser(AbstractUser):
     is_doctor = models.BooleanField(default=False)
 
     email = models.EmailField(unique=True) # replaces username as unique identifier
+    username = models.CharField(max_length=150, blank=True, null=True)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"] # username still required
+    REQUIRED_FIELDS = []
+
+    def __str__(self):
+        return self.email
 
 class DoctorProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="doctor_profile")
