@@ -7,6 +7,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 
 class GameListCreateView(APIView): 
+    """
+    Returns a list of games (GET).
+    Creates a game (POST) from the model.
+    """
     def get(self, request):
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
@@ -22,15 +26,19 @@ class GameListCreateView(APIView):
 # Prescription Views
 class PrescriptionListCreateView(APIView):
     """
-    Only authenticated users can see list of games (GET). Only specialists can assign games (POST).
+    Users must be authenticated (logged in).
+    Returns a list of games (GET). 
+        Specialists see the games they assigned to Patients.
+        Patients see the games they were assigned by Specialists. 
+    Only specialists can create/assign games (POST).
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request): # outgoing: server -> client
         if request.user.is_doctor:
-            prescriptions = Prescription.objects.filter(doctor=request.user) # list prescriptions a doctor has assigned
+            prescriptions = Prescription.objects.filter(doctor=request.user) 
         else:
-            prescriptions = Prescription.objects.filter(patient=request.user) # list prescriptions a patient has been assigned
+            prescriptions = Prescription.objects.filter(patient=request.user) 
         serializer = PrescriptionSerializer(prescriptions, many=True) # serialize the list to JSON for outgoing responses to client
         return Response(serializer.data)
 
@@ -60,10 +68,17 @@ class SessionListCreateView(APIView):
     
 # Start a session    
 class SessionStartView(APIView):
+    """
+    Starts a session for authenticated patients (logged-in). 
+    Requires game_id in body (prescription_id optional, but recommended).
+    Creates a Session object from data, including current time. 
+    """
     def post(self, request): # incoming: Unity -> server
-        patient = request.user
-        game_id = request.data.get("game_id")
-        prescription_id = request.data.get("prescription_id", None)
+        permission_classes = [IsAuthenticated] # must be logged in
+
+        patient = request.user # automatically assigned if user logged in
+        game_id = request.data.get("game_id") # in body
+        prescription_id = request.data.get("prescription_id", None) # in body
 
         session = Session.objects.create(
             patient=patient,
@@ -72,11 +87,16 @@ class SessionStartView(APIView):
             start_time=timezone.now()
         )
         serializer = SessionSerializer(session).data # deserialize: JSON -> django model instance
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer, status=status.HTTP_201_CREATED)
 
 # End a session
 class SessionEndView(APIView):
-    def post(self, request, session_id):
+    """
+    Ends a session. 
+    Expects the session_id of a created session. 
+    Saves an end time for to that Session object; otherwise, returns error if not found.
+    """
+    def post(self, request, session_id): # session_id in header
         try:
             session = Session.objects.get(id=session_id)
             session.end_time = timezone.now()
@@ -87,6 +107,10 @@ class SessionEndView(APIView):
 
 # Create an EEG-Reading instance (unity POSTs here -> serializer -> model with all data -> DB)
 class EEGReadingCreateView(APIView):
+    """
+    Lists all EEG-Readings, currently for testing purposes (GET).
+    Creates an EEG-Reading object out of the incoming data from Unity (POST). 
+    """
     def get(self, request):
         readings = EEGReading.objects.all()
         serializer = EEGReadingSerializer(readings, many=True)
