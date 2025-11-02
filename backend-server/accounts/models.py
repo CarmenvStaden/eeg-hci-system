@@ -22,3 +22,4 @@ class DoctorProfile(models.Model):
 class PatientProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="patient_profile")
     date_of_birth = models.DateField(blank=True, null=True)
+    doctor = models.ForeignKey('DoctorProfile', on_delete=models.SET_NULL, null=True, blank=True, related_name="patients") # associates a patient to a doctor -> for doctors to view list of patients
