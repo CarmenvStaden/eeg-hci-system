@@ -2,6 +2,11 @@ from rest_framework import serializers
 from .models import CustomUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+class AllUsersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'username')
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for registering a new user. 
@@ -11,7 +16,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
     is_doctor = serializers.BooleanField(default=False)
-    is_patient = serializers.BooleanField(default=False)
+    is_patient = serializers.BooleanField(default=True) # all new users defaulted as patients -> extra field for veirfying as doctor?
 
     class Meta:
         model = CustomUser
