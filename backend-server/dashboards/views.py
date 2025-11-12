@@ -47,3 +47,19 @@ class PatientsCreateList(APIView):
         patients = doctor.patients.all() # gets all patients related to the logged in doctor; reverse relation
         serializer = PatientSerializer(patients, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class PatientDelete(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, patient_id):
+        user = request.user
+        if not user.is_doctor: # is_doctor is an attribute of the CustomUser model
+            return Response("only doctors can remove patients from their records", status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            patient = PatientProfile.objects.get(id=patient_id)
+        except PatientProfile.DoesNotExist:
+            return Response({"error": "patient not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        patient.delete()
+        return Response(f"patient {patient_id} removed from record", status=status.HTTP_200_OK)
