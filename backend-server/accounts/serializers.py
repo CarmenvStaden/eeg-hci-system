@@ -27,7 +27,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         if attrs.get('is_doctor') and attrs.get('is_patient'):
-            raise serializers.ValidationError("User cannot be both doctor and patient.")
+            raise serializers.ValidationError({"two_profiles": "User cannot be both doctor and patient."})
         return attrs
 
     def create(self, validated_data):
