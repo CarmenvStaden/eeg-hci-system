@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -21,8 +21,11 @@ def test_hello(request):
 class UserAccountsList(APIView):
     """
     For testing purposes, verifies registration.
+    Only superusers (admin) can call -> isAdminUser automatically checks.
     Returns a list of all the registered users.
     """
+    permission_classes = [IsAdminUser]
+
     def get(self, request):
         users = CustomUser.objects.all()
         serializer = AllUsersSerializer(users, many=True)
