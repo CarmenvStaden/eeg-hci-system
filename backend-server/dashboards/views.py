@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from accounts.models import DoctorProfile, PatientProfile, CustomUser
+from accounts.serializers import AllUsersSerializer
 from .serializers import PatientAddSerializer, DoctorSerializer, PatientSerializer
 # from .serializers import 
 from rest_framework.permissions import IsAuthenticated
@@ -11,15 +12,15 @@ class PatientProfileList(APIView):
     Returns list of patient profiles with corresponding id, email, and username.
     """
     def get(self, request):
-        patient_profiles = PatientProfile.objects.all()
-        serializer = PatientSerializer(patient_profiles, many=True)
+        patient_profiles = CustomUser.objects.filter(is_patient=True).all()
+        serializer = AllUsersSerializer(patient_profiles, many=True)
         return Response(serializer.data)
 
 # Create your views here.
 class PatientsCreateList(APIView):
     """
     Allows logged-in doctor to add (post) and list (get) patients. Assumes the doctor performing the action is logged in.
-    Expects a PatientProfile id (post).
+    Expects a CustomUser.patient_id (post).
     Post: returns a success message if patient is correctly associated to a doctor, or error otherwise.
     Get: returns a list of doctor's patients
     """
@@ -40,7 +41,8 @@ class PatientsCreateList(APIView):
         if not user.is_doctor: # is_doctor is an attribute of the CustomUser model
             return Response("only doctors can see their patient lists", status=status.HTTP_403_FORBIDDEN)
         
-        doctor = DoctorProfile.objects.filter(user=user).first() # return first instance of matching user
+        doctor, created = DoctorProfile.objects.get_or_create(user=user) # return first instance of matching user
+
         if not doctor:
             return Response("doctor could not be found")
         
@@ -49,17 +51,20 @@ class PatientsCreateList(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class PatientDelete(APIView):
+    """
+    Deletes user. Needs to delete doctor-patient relationship.
+    """
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, patient_id):
+    def delete(self, request, patient_user_id):
         user = request.user
         if not user.is_doctor: # is_doctor is an attribute of the CustomUser model
             return Response("only doctors can remove patients from their records", status=status.HTTP_403_FORBIDDEN)
 
         try:
-            patient = PatientProfile.objects.get(id=patient_id)
-        except PatientProfile.DoesNotExist:
+            patient_user = CustomUser.objects.get(id=patient_user_id)
+        except CustomUser.DoesNotExist:
             return Response({"error": "patient not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        patient.delete()
-        return Response(f"patient {patient_id} removed from record", status=status.HTTP_200_OK)
+        patient_user.delete()
+        return Response(f"patient {patient_user_id} removed from record", status=status.HTTP_200_OK)
