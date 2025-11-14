@@ -1,5 +1,5 @@
-from .models import CustomUser, DoctorProfile, PatientProfile
-from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer, AllUsersSerializer
+from .models import CustomUser
+from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer, AllUsersSerializer, UserRoleSerializer
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 
 # Create your views here.
@@ -17,6 +17,21 @@ from django.http import HttpResponse
 
 def test_hello(request):
     return HttpResponse('Test Hello World!')
+
+class UserRoleUpdate(APIView):
+    """
+    Allows Admin ('is_staff' superusers) to update roles of existing users by setting 'is_doctor' or 'is_patient' tags to True. Once flags set, signal (accounts/signals.py) automatically creates the corresponding Doctor or Patient profile for that user.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def patch(self, request, user_id):
+        user = get_object_or_404(CustomUser, id=user_id)
+        serializer = UserRoleSerializer(user, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()  # triggers profile creation via signal
+            return Response({"message": "Role updated successfully."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserAccountsList(APIView):
     """
