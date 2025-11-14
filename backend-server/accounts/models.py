@@ -15,6 +15,7 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
+# profiles created 
 class DoctorProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="doctor_profile") # related_name for reverse relation
     specialization = models.CharField(max_length=100, blank=True, null=True)
