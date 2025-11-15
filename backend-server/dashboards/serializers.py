@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from accounts.models import DoctorProfile, PatientProfile
+from accounts.models import DoctorProfile, PatientProfile, CustomUser
 
 class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -16,8 +16,11 @@ class DoctorSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'specialization']
 
 class PatientAddSerializer(serializers.Serializer):
-    # accept the patient by PatientProfile.id
-    patient_id = serializers.IntegerField(write_only=True)
+    """
+    Creates Doctor and Patient Profiles for patient-doctor relationship from CustomUser model is_doctor or is_patient tags.
+    """
+    # accept the patient by CustomUser.ID -> will become CustomUser.is_patient.ID once verified
+    patient_user_id = serializers.IntegerField(write_only=True)
 
     def validate(self, attrs):
         """
@@ -29,24 +32,31 @@ class PatientAddSerializer(serializers.Serializer):
             raise serializers.ValidationError("not authenticated")
 
         if not user.is_doctor:
-            raise serializers.ValidationError("only doctors can add patients.")
+            raise serializers.ValidationError({"doctor_role_error": "only doctors can add patients."})
 
-        # double check that DoctorProfile exists
+        # either DoctorProfile exists, otherwise create at first instance of trying to add a patient
         DoctorProfile.objects.get_or_create(user=user)
 
-        # double check that patient exists
-        patient_id = attrs.get('patient_id')
+        # double check that patient exists based off CustomUser.ID (passed in as patient_user_id)
+        patient_user_id = attrs.get('patient_user_id')
         try:
-            patient_profile = PatientProfile.objects.get(id=patient_id)
-        except PatientProfile.DoesNotExist:
-            raise serializers.ValidationError(f"Patient with id {patient_id} does not exist.")
+            patient_user = CustomUser.objects.get(id=patient_user_id)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({"invalid_id_error": f"no such user with id {patient_user_id} exists."})
 
-        attrs['patient_profile'] = patient_profile  # attach for create()
+        # make sure that if CustomUser.ID (named patient_user_id) is valid, has an 'is_patient' tag
+        if not patient_user.is_patient:
+            raise serializers.ValidationError({"patient_role_error": "user is not a patient."})
+        
+        # ensure PatientProfile exists, otherwise create at first instance of being added to doctor
+        patient_profile, _ = PatientProfile.objects.get_or_create(user=patient_user)
+
+        attrs['patient_profile'] = patient_profile
         return attrs
 
     def create(self, validated_data):
-        doctor = self.context['request'].user.doctor_profile # user.doctor_profile directly accesses from CustomUser instance the DoctorProfile
+        doctor_profile = self.context['request'].user.doctor_profile # user.doctor_profile directly accesses from CustomUser instance the DoctorProfile
         patient_profile = validated_data['patient_profile'] # reverse relation
-        patient_profile.doctor = doctor # corresponds a doctor to a patient
+        patient_profile.doctor = doctor_profile # establishes the patient-doctor relationship through profiles
         patient_profile.save()
         return patient_profile
