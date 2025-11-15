@@ -81,4 +81,19 @@ class UserLogoutList(APIView):
         except Exception:
             return Response({"error": "bad token"}, status=status.HTTP_400_BAD_REQUEST)
 
+class DeleteUser(APIView):
+    permissions = [IsAuthenticated, IsAdminUser]
 
+    def delete(self, request, target_id):
+        user = request.user
+
+        if not user.is_staff:
+            return Response("only admin can delete users", status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            target_user = CustomUser.objects.get(id=target_id)
+        except CustomUser.DoesNotExist:
+            return Response(f"target user {target_id} not found", status=status.HTTP_404_NOT_FOUND)
+
+        target_user.delete()
+        return Response(f"target user {target_id} removed from record")
