@@ -12,5 +12,5 @@ urlpatterns = [
     path('login/', UserLoginList.as_view(), name='login'),
     path('logout/', UserLogoutList.as_view(), name="logout"),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('delete/user/<int:target_id>/', DeleteUser.as_view(), name='delete_user')
+    path('delete/user/<int:target_id>/', DeleteUser.as_view(), name='delete_user') # admin only
 ]

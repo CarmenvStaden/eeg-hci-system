@@ -31,7 +31,7 @@ class PatientsCreateList(APIView):
 
         if serializer.is_valid():
             patient_profile = serializer.save()
-            return Response({f"patient {patient_profile.user.email} assigned to doctor."}, status=status.HTTP_201_CREATED)
+            return Response({"PatientAddSuccess":f"patient {patient_profile.user.email} assigned to doctor."}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -41,10 +41,7 @@ class PatientsCreateList(APIView):
         if not user.is_doctor: # is_doctor is an attribute of the CustomUser model
             return Response("only doctors can see their patient lists", status=status.HTTP_403_FORBIDDEN)
         
-        doctor, created = DoctorProfile.objects.get_or_create(user=user) # return first instance of matching user
-
-        if not doctor:
-            return Response("doctor could not be found")
+        doctor, created = DoctorProfile.objects.get_or_create(user=user) # return first instance of matching use
         
         patients = doctor.patients.all() # gets all patients related to the logged in doctor; reverse relation
         serializer = PatientSerializer(patients, many=True)
@@ -61,10 +58,19 @@ class PatientDelete(APIView):
         if not user.is_doctor: # is_doctor is an attribute of the CustomUser model
             return Response("only doctors can remove patients from their records", status=status.HTTP_403_FORBIDDEN)
 
+        doctor = getattr(user, "doctor_profile", None)
+        if not doctor:
+            return Response("doctor profile not found", status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            patient_user = CustomUser.objects.get(id=patient_user_id)
-        except CustomUser.DoesNotExist:
-            return Response({"error": "patient not found"}, status=status.HTTP_404_NOT_FOUND)
+            patient_profile = PatientProfile.objects.get(user__id=patient_user_id)
+        except PatientProfile.DoesNotExist:
+            return Response("patient profile not found", status=status.HTTP_404_NOT_FOUND)
         
-        patient_user.delete()
-        return Response(f"patient {patient_user_id} removed from record", status=status.HTTP_200_OK)
+        if patient_profile.doctor_id != doctor.id:
+            return Response("patient does not belong to this doctor", status=403)
+
+        patient_profile.doctor = None
+        patient_profile.save()
+
+        return Response(f"patient with user ID {patient_user_id} removed from {request.user.username}'s record", status=status.HTTP_200_OK)
