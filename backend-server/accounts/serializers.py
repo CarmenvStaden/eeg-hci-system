@@ -7,6 +7,16 @@ class AllUsersSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ('id', 'email', 'username')
 
+class UserRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['is_doctor', 'is_patient']
+
+    def validate(self, attrs):
+        if attrs.get('is_doctor') and attrs.get('is_patient'):
+            raise serializers.ValidationError({"two_profiles": "user cannot be both doctor and patient."})
+        return attrs
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for registering a new user. 
@@ -15,19 +25,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
-    is_doctor = serializers.BooleanField(default=False)
-    is_patient = serializers.BooleanField(default=True) # all new users defaulted as patients -> extra field for veirfying as doctor?
-
     class Meta:
         model = CustomUser
-        fields = ['email', 'username', 'password', 'password2', 'is_doctor', 'is_patient']
+        fields = ['email', 'username', 'password', 'password2']
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
-        if attrs.get('is_doctor') and attrs.get('is_patient'):
-            raise serializers.ValidationError("User cannot be both doctor and patient.")
         return attrs
 
     def create(self, validated_data):

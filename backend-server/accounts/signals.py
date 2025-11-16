@@ -7,8 +7,9 @@ def create_user_profile(sender, instance, created, **kwargs):
     """
     Signal automatically assigns a CustomUser as a "is_doctor" or "is_patient" profile upon creation.
     """
-    if created:
-        if instance.is_doctor:
-            DoctorProfile.objects.create(user=instance)
-        elif instance.is_patient:
-            PatientProfile.objects.create(user=instance)
+    # profile created when role assigned in UserRoleUpdate by Admin
+    if instance.is_doctor and not hasattr(instance, "doctorprofile"):
+        DoctorProfile.objects.create(user=instance)
+
+    if instance.is_patient and not hasattr(instance, "patientprofile"):
+        PatientProfile.objects.create(user=instance)
