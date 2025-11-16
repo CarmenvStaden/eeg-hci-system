@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/AttentionHover.unity
+    guid: 607ca87bb94c8d642b91aa36dc9941f7
   m_configObjects: {}

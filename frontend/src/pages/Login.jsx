@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import HealthCheck from "../components/HealthCheck.jsx";
+import { loginUser } from "../services/auth";
 
 const Card = styled.div`
   max-width: 380px;
@@ -12,25 +15,78 @@ const Card = styled.div`
 `;
 
 export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [type, setType] = useState("patient");
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const loginAs = (type) => {
-    sessionStorage.setItem("mm_userType", type);
-    navigate(type === "patient" ? "/home/patient" : "/home/specialist");
+  const onSubmit = async () => {
+    setError(null);
+    try {
+      await loginUser({ email, password });
+      sessionStorage.setItem("mm_userType", type);
+      navigate(type === "patient" ? "/home/patient" : "/home/specialist");
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   return (
-    <Card>
-      <h2 style={{marginTop: 0}}>Login</h2>
-      <div style={{display:"grid", gap:"0.6rem"}}>
-        <input placeholder="Username" />
-        <input type="password" placeholder="Password" />
-        <div style={{display:"flex", gap:"0.5rem", marginTop:"0.2rem"}}>
-          <button onClick={() => loginAs("patient")}>Login as Patient</button>
-          <button onClick={() => loginAs("specialist")}>Login as Specialist</button>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh", // Full screen height
+      }}
+    >
+      <Card style={{ padding: "2rem", width: "300px", textAlign: "center" }}>
+        <h2 style={{ marginTop: 0 }}>Login</h2>
+        <div style={{ display: "grid", gap: "0.6rem" }}>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          <input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <label style={{ display: "grid", gap: "0.3rem" }}>
+            <span>I am a...</span>
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="patient">Patient</option>
+              <option value="specialist">Specialist</option>
+            </select>
+          </label>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              marginTop: "0.2rem",
+              alignItems: "center",
+              justifyContent: "center", // center the button too
+            }}
+          >
+            <button onClick={onSubmit}>Login</button>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              marginTop: "0.2rem",
+              alignItems: "center",
+              justifyContent: "center", // center the link
+            }}
+          >
+            <a href="/signup">Create an account</a>
+          </div>
         </div>
-        <a href="/signup">Create an account</a>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }

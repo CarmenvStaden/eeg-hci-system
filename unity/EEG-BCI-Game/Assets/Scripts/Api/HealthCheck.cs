@@ -4,13 +4,19 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 
-// Sends a GET to /accounts/hello/ endpoint and logs the response text.
-
+// Sends a GET to /accounts/hello/ endpoint and logs the response text
 public class HealthCheck : MonoBehaviour
 {
     // Dev URL:
     [SerializeField]
     private string healthUrl = "http://127.0.0.1:8000/api/accounts/hello/";
+
+    void Awake()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        healthUrl = "/api/accounts/hello/";
+#endif
+    }
 
     private IEnumerator Start()
     {

@@ -8,8 +8,8 @@ public class HoverSphere : MonoBehaviour
     public TgcClient tgc;           // drag your TGCManager here
 
     [Header("Hover Mapping")]
-    public float minY = 1f;         // value = 0
-    public float maxY = 4f;         // value = 100
+    public float minY = 0.5f;         // value = 0
+    public float maxY = 1f;         // value = 100
     public float smooth = 6f;       // smoothing speed
 
     float targetY;

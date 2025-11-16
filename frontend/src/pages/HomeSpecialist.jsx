@@ -11,7 +11,7 @@ export default function HomeSpecialist() {
   const patients = [
     { name: "Patient A", caseId: "#C-125", status: "Complete" },
     { name: "Patient B", caseId: "#C-317", status: "Pending" },
-    { name: "Patient C", caseId: "#C-217", status: "Complete" },
+    { name: "Test Patient", caseId: "#C-217", status: "Complete" },
   ];
 
   return (

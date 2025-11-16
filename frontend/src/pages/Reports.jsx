@@ -6,7 +6,7 @@ export default function Reports() {
   ];
   return (
     <>
-      <h2>Reports — Patient B</h2>
+      <h2>Reports — Test Patient</h2>
       <table>
         <thead>
           <tr><th>Session</th><th>Date</th><th>Game</th><th>Status</th></tr>

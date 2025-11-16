@@ -1,22 +1,34 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-using System;
+#if !UNITY_WEBGL || UNITY_EDITOR
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+#else
+using NativeWebSocket;
+using System.Text;
+#endif
 
 public class TgcClient : MonoBehaviour
 {
-    [Header("TGC TCP Settings")]
+    [Header("TGC TCP Settings (Editor / Standalone)")]
     public string host = "127.0.0.1";
     public int port = 13854;
 
+    [Header("WebGL WebSocket Settings (via tgc-proxy.js)")]
+    public string wsUrl = "ws://127.0.0.1:13855";
+
+#if !UNITY_WEBGL || UNITY_EDITOR
     TcpClient client;
     NetworkStream stream;
     Thread reader;
     volatile bool running;
+#else
+    NativeWebSocket.WebSocket ws;
+#endif
 
     int rawEegValue = int.MinValue;
 
@@ -25,8 +37,30 @@ public class TgcClient : MonoBehaviour
         public int delta, theta, lowAlpha, highAlpha, lowBeta, highBeta, lowGamma, midGamma;
     }
 
-    void Start()
+    // values shared between thread/WS callbacks and main thread
+    public int attentionValue { get; private set; } = -1;
+    public int meditationValue { get; private set; } = -1;
+    EegPower latestEegPower;
+
+    public int signalStrength { get; private set; } = -1;
+
+    // debug message queue
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> logQueue
+        = new System.Collections.Concurrent.ConcurrentQueue<string>();
+
+    // shared buffer for splitting JSON lines
+    private readonly StringBuilder buffer = new StringBuilder();
+
+    // events usable from other scripts
+    public event Action<int> AttentionChanged;
+    public event Action<int> MeditationChanged;
+    public event Action<int> RawEegReceived;
+    public event Action<EegPower> EegPowerReceived;
+    public event Action<int> SignalStrengthChanged;
+
+    async void Start()
     {
+#if !UNITY_WEBGL || UNITY_EDITOR
         try
         {
             client = new TcpClient();
@@ -34,31 +68,71 @@ public class TgcClient : MonoBehaviour
             stream = client.GetStream();
             running = true;
 
-            // Ask TGC for JSON output (ThinkGear Socket Protocol)
+            // Ask TGC for JSON output
             var cfg = Encoding.ASCII.GetBytes("{\"enableRawOutput\":true,\"format\":\"Json\"}\n");
             stream.Write(cfg, 0, cfg.Length);
 
-            // Debug: To confirm TCP connection
-            Debug.Log($"[TGC] Connected to {host}:{port}. Requesting JSON…");
+            Debug.Log($"[TGC] TCP connected to {host}:{port}. Requesting JSON…");
 
             reader = new Thread(ReadLoop) { IsBackground = true };
             reader.Start();
         }
         catch (Exception e)
         {
-            Debug.LogError("[TGC] Connect failed: " + e.Message);
+            Debug.LogError("[TGC] TCP connect failed: " + e.Message);
         }
+#else
+        ws = new WebSocket(wsUrl);
+
+        ws.OnOpen += () =>
+        {
+            Debug.Log("[TGC] WS connected to proxy, requesting JSON…");
+            // same config as TCP but through WebSocket
+            var cfg = "{\"enableRawOutput\":true,\"format\":\"Json\"}\n";
+            ws.SendText(cfg);
+        };
+
+        ws.OnError += (err) =>
+        {
+            Debug.LogError("[TGC] WS error: " + err);
+        };
+
+        ws.OnClose += (code) =>
+        {
+            Debug.Log("[TGC] WS closed: " + code);
+        };
+
+        ws.OnMessage += (bytes) =>
+        {
+            // bytes may contain partial/multiple JSON lines, just like TCP
+            var chunk = Encoding.ASCII.GetString(bytes);
+            ProcessChunk(chunk);
+        };
+
+        try
+        {
+            await ws.Connect();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("[TGC] WS connect failed: " + e.Message);
+        }
+#endif
     }
 
     void Update()
-    {   
-        // Log messages
+    {
+        // drain debug messages
         while (logQueue.TryDequeue(out var msg))
         {
             Debug.Log(msg);
         }
 
-        // Dispatch on main thread
+        // dispatch values to listeners on main thread
+        if (signalStrength >= 0)
+        {
+            SignalStrengthChanged?.Invoke(signalStrength);
+        }
         if (attentionValue >= 0)
         {
             AttentionChanged?.Invoke(attentionValue);
@@ -70,33 +144,24 @@ public class TgcClient : MonoBehaviour
         if (rawEegValue != int.MinValue)
         {
             RawEegReceived?.Invoke(rawEegValue);
-            rawEegValue = int.MinValue; // reset
+            rawEegValue = int.MinValue;
         }
-
         EegPowerReceived?.Invoke(latestEegPower);
-
     }
 
+#if !UNITY_WEBGL || UNITY_EDITOR
     void ReadLoop()
     {
         var buf = new byte[4096];
-        var sb = new StringBuilder();
         while (running)
         {
             try
             {
                 int n = stream.Read(buf, 0, buf.Length);
                 if (n <= 0) break;
-                sb.Append(Encoding.ASCII.GetString(buf, 0, n));
 
-                // TGC sends one JSON object per line, delimited by \r
-                int idx;
-                while ((idx = sb.ToString().IndexOf('\r')) >= 0)
-                {
-                    string line = sb.ToString(0, idx);
-                    sb.Remove(0, idx + 1);
-                    HandleMessage(line);
-                }
+                var chunk = Encoding.ASCII.GetString(buf, 0, n);
+                ProcessChunk(chunk);
             }
             catch (Exception e)
             {
@@ -106,29 +171,52 @@ public class TgcClient : MonoBehaviour
         }
         running = false;
     }
+#endif
 
-    // Pass values from bg thread (tgc) to main (unity interactions/set color)
-    public int attentionValue { get; private set; } = -1;
-    public int meditationValue { get; private set; } = -1;
+    /// <summary>
+    /// Handles arbitrary chunks from TCP or WebSocket, splits by '\r',
+    /// and feeds complete JSON lines into HandleMessage.
+    /// </summary>
+    void ProcessChunk(string chunk)
+    {
+        lock (buffer)
+        {
+            buffer.Append(chunk);
 
-    // queue for debug messages
-    private readonly System.Collections.Concurrent.ConcurrentQueue<string> logQueue
-        = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            int idx;
+            while ((idx = buffer.ToString().IndexOf('\r')) >= 0)
+            {
+                string line = buffer.ToString(0, idx);
+                buffer.Remove(0, idx + 1);
+
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    HandleMessage(line);
+                }
+            }
+        }
+    }
 
     void HandleMessage(string jsonLine)
     {
-        // Minimal parse: pull eSense attention & meditation
+        //  signal strength
+        if (jsonLine.Contains("\"poorSignalLevel\""))
+        {
+            int sig = Extract(jsonLine, "\"poorSignalLevel\":");
+            signalStrength = sig;
+            logQueue.Enqueue($"SignalStrength={sig}");
+        }
+
+        // Minimal parse: eSense (attention/meditation)
         if (jsonLine.Contains("\"eSense\""))
         {
             int att = Extract(jsonLine, "\"attention\":");
             int med = Extract(jsonLine, "\"meditation\":");
 
-            // Assign fields (ints to safely pass between threads)
             attentionValue = att;
             meditationValue = med;
 
-            // Add messages to Q
-            logQueue.Enqueue($"Attention={att}, Meditation={med}");
+            logQueue.Enqueue($"[TGC] Attention={att}, Meditation={med}");
         }
 
         if (jsonLine.Contains("\"rawEeg\""))
@@ -150,8 +238,6 @@ public class TgcClient : MonoBehaviour
                 lowGamma = Extract(jsonLine, "\"lowGamma\":"),
                 midGamma = Extract(jsonLine, "\"midGamma\":")
             };
-
-            // TODO: parse poorSignalLevel, blinkStrength, etc.
         }
     }
 
@@ -160,35 +246,27 @@ public class TgcClient : MonoBehaviour
         int i = s.IndexOf(key, StringComparison.Ordinal);
         if (i < 0) return -1;
         i += key.Length;
+
         int j = i;
-        while (j < s.Length && char.IsDigit(s[j])) j++;
-        int.TryParse(s.Substring(i, j - i), out var val);
-        return val;
+        while (j < s.Length && (char.IsDigit(s[j]) || s[j] == '-')) j++;
+
+        if (int.TryParse(s.Substring(i, j - i), out var val))
+            return val;
+
+        return -1;
     }
 
-    // make events usable from other scripts
-    public event Action<int> AttentionChanged;
-    public event Action<int> MeditationChanged;
-    public event System.Action<int> RawEegReceived;
-    public event System.Action<EegPower> EegPowerReceived;
-
-    EegPower latestEegPower;
-
-    void OnAttentionChanged(int v)
+    async void OnDestroy()
     {
-        Debug.Log($"[TGC] Attention={v}");
-        AttentionChanged?.Invoke(v);
-    }
-    void OnMeditationChanged(int v)
-    {
-        Debug.Log($"[TGC] Meditation={v}");
-        MeditationChanged?.Invoke(v);
-    }
-
-    void OnDestroy()
-    {
+#if !UNITY_WEBGL || UNITY_EDITOR
         running = false;
         try { stream?.Close(); } catch { }
         try { client?.Close(); } catch { }
+#else
+        if (ws != null && ws.State == WebSocketState.Open)
+        {
+            try { await ws.Close(); } catch { }
+        }
+#endif
     }
 }
