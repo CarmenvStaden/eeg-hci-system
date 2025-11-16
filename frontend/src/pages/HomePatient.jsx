@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { fetchPrescriptions, fetchGames } from "../services/games.js";
-import { fetchUsers } from "../services/user.js";
+//import { fetchUsers } from "../services/user.js";
 
 const Card = styled.section`
   background: var(--card);
@@ -37,7 +37,7 @@ export default function HomePatient() {
         const [gamesData, prescData, users] = await Promise.all([
           fetchGames(),
           fetchPrescriptions(),
-          fetchUsers(),              
+          //fetchUsers(),              
         ]);
 
         // normalize games (array or paginated)
@@ -50,15 +50,15 @@ export default function HomePatient() {
         const prescList = Array.isArray(prescData) ? prescData : [];
 
         // find patient by id
-        const patient = Array.isArray(users)
-          ? users.find((u) => u.id === PATIENT_ID)
-          : null;
+        // const patient = Array.isArray(users)
+        //   ? users.find((u) => u.id === PATIENT_ID)
+        //   : null;
 
         if (!alive) return;
 
         setGames(gameList);
         setPrescriptions(prescList);
-        if (patient?.username) setUsername(patient.username);
+        //if (patient?.username) setUsername(patient.username);
       } catch (e) {
         console.error(e);
         const msg = String(e?.message || "Failed to load");
