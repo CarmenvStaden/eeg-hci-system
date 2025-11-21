@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Session, EEGReading, Prescription, Game
+from accounts.models import CustomUser
 from .serializers import SessionSerializer, EEGReadingSerializer, PrescriptionSerializer, GameSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
@@ -66,6 +67,48 @@ class SessionListCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+class GetSessionByUserIDDoctor(APIView):
+    """
+    For doctors.
+    Returns list of all sessions associated to the ID of the patient passed into the URL.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, target_patient_id):
+        user = request.user
+
+        if not user.is_doctor:
+            return Response("doctor only action", status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            target_user = CustomUser.objects.get(id=target_patient_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": f"record with ID {target_patient_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if target_user.is_doctor:
+            return Response("cannot view other doctors' sessions", status=status.HTTP_403_FORBIDDEN)
+        
+        sessions = target_user.sessions.all()
+        serializer = SessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class GetMySession(APIView):
+    """
+    For patients.
+    Returns list of all sessions associated to the logged-in patient.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not user.is_patient:
+            return Response("patient only action", status=status.HTTP_403_FORBIDDEN)
+        
+        sessions = user.sessions.all()
+        serializer = SessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # Start a session    
 class SessionStartView(APIView):
     """
@@ -122,3 +165,55 @@ class EEGReadingCreateView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class GetEEGBySessionIDDoctor(APIView):
+    """
+    For doctors.
+    Returns all the eeg-readings of a particular session (target_session_id) by a particular patient (target_user_id).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, target_session_id, target_patient_id):
+        user = request.user
+
+        if not user.is_doctor:
+            return Response("doctor only action", status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            target_user = CustomUser.objects.get(id=target_patient_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": f"record with ID {target_patient_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if target_user.is_doctor:
+            return Response("cannot view other doctors' sessions", status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            target_session = Session.objects.get(id=target_session_id, patient=target_user)
+        except Session.DoesNotExist:
+            return Response({"error": f"session with ID {target_session_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        eeg_readings = target_session.egg_readings.all()
+        serializer = EEGReadingSerializer(eeg_readings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class GetMyEEGBySession(APIView):
+    """
+    For patients.
+    Returns list of a patient's own eeg-readings associated to a particular session.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, target_session_id):
+        user = request.user
+
+        if not user.is_patient:
+            return Response("patient only action", status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            target_session = Session.objects.get(id=target_session_id, patient=user)
+        except Session.DoesNotExist:
+            return Response({"error": f"session with ID {target_session_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        eeg_readings = target_session.eeg_readings.all()
+        serializer = EEGReadingSerializer(eeg_readings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
