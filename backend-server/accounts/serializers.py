@@ -51,3 +51,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['is_doctor'] = user.is_doctor
         token['is_patient'] = user.is_patient
         return token
+    
+class UserEmailLookupSerializer(serializers.Serializer):
+    target_email = serializers.EmailField()
