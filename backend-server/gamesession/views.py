@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Session, EEGReading, Prescription, Game
+from accounts.models import CustomUser
 from .serializers import SessionSerializer, EEGReadingSerializer, PrescriptionSerializer, GameSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
@@ -66,6 +67,40 @@ class SessionListCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+class GetSessionByUserIDDoctor(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, target_patient_id):
+        user = request.user
+
+        if not user.is_doctor:
+            return Response("doctor only action", status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            target_user = CustomUser.objects.get(id=target_patient_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": f"record with ID {target_patient_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if target_user.is_doctor:
+            return Response("cannot view other doctors' sessions", status=status.HTTP_403_FORBIDDEN)
+        
+        sessions = target_user.sessions.all()
+        serializer = SessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class GetMySession(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not user.is_patient:
+            return Response("patient only action", status=status.HTTP_403_FORBIDDEN)
+        
+        sessions = user.sessions.all()
+        serializer = SessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # Start a session    
 class SessionStartView(APIView):
     """
