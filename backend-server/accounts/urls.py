@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from accounts.views import UserRegisterCreate, UserLoginList, UserLogoutList, UserAccountsList, UserRoleUpdate, DeleteUser
+from accounts.views import UserRegisterCreate, UserLoginList, UserLogoutList, UserAccountsList, UserRoleUpdate, DeleteUser, EmailLookup
 from rest_framework_simplejwt.views import TokenRefreshView
 
 # URLConf
@@ -12,5 +12,6 @@ urlpatterns = [
     path('login/', UserLoginList.as_view(), name='login'),
     path('logout/', UserLogoutList.as_view(), name="logout"),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('delete/user/<int:target_id>/', DeleteUser.as_view(), name='delete_user') # admin only
+    path('delete/user/<int:target_id>/', DeleteUser.as_view(), name='delete_user'), # admin only
+    path('users/lookup/', EmailLookup.as_view(), name='lookup_user_id_by_email')
 ]

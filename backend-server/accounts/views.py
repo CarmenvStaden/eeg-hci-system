@@ -1,5 +1,5 @@
 from .models import CustomUser
-from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer, AllUsersSerializer, UserRoleSerializer
+from .serializers import UserRegistrationSerializer, CustomTokenObtainPairSerializer, AllUsersSerializer, UserRoleSerializer, UserEmailLookupSerializer
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -97,3 +97,23 @@ class DeleteUser(APIView):
 
         target_user.delete()
         return Response(f"target user {target_id} removed from record")
+
+class EmailLookup(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UserEmailLookupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_email = serializer.validated_data['target_email']
+
+        try:
+            user_object = CustomUser.objects.get(email=target_email)
+            return Response(f"Found user: {user_object.id}", status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response(f"target user with email '{target_email}' not found", status=status.HTTP_404_NOT_FOUND)
+        except CustomUser.MultipleObjectsReturned:
+            return Response({"error" : f"multiple users found with email '{target_email}'"}, status=status.HTTP_400_BAD_REQUEST)
+
+

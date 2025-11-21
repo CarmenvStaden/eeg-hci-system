@@ -2,6 +2,7 @@ from rest_framework import serializers
 from accounts.models import DoctorProfile, PatientProfile, CustomUser
 
 class PatientSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='user.id', read_only=True) # force the CustomUser.id
     email = serializers.EmailField(source='user.email', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
 
