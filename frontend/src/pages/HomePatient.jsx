@@ -1,8 +1,7 @@
 // src/pages/HomePatient.jsx
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { fetchPrescriptions, fetchGames } from "../services/games.js";
-//import { fetchUsers } from "../services/user.js";
+import { fetchPrescriptions, fetchGames, fetchSessions } from "../services/games.js";
 
 const Card = styled.section`
   background: var(--card);
@@ -10,8 +9,6 @@ const Card = styled.section`
   border-radius: 14px;
   padding: 1rem;
 `;
-
-const PATIENT_ID = 7; // TODO: replace with logged-in patient's id from your auth/profile
 
 function formatDate(iso) {
   try {
@@ -26,6 +23,7 @@ export default function HomePatient() {
   const [err, setErr] = useState("");
   const [prescriptions, setPrescriptions] = useState([]);
   const [games, setGames] = useState([]);
+  const [sessions, setSessions] = useState([]); 
   const [username, setUsername] = useState('')
 
   useEffect(() => {
@@ -34,10 +32,10 @@ export default function HomePatient() {
       setLoading(true);
       setErr("");
       try {
-        const [gamesData, prescData, users] = await Promise.all([
+        const [gamesData, prescData, sessData] = await Promise.all([
           fetchGames(),
           fetchPrescriptions(),
-          //fetchUsers(),              
+          fetchSessions(),      
         ]);
 
         // normalize games (array or paginated)
@@ -48,17 +46,14 @@ export default function HomePatient() {
           : [];
 
         const prescList = Array.isArray(prescData) ? prescData : [];
-
-        // find patient by id
-        // const patient = Array.isArray(users)
-        //   ? users.find((u) => u.id === PATIENT_ID)
-        //   : null;
+        const sessionList = Array.isArray(sessData) ? sessData : []; 
 
         if (!alive) return;
 
         setGames(gameList);
         setPrescriptions(prescList);
-        //if (patient?.username) setUsername(patient.username);
+        setSessions(sessionList); 
+        // if (patient?.username) setUsername(patient.username);
       } catch (e) {
         console.error(e);
         const msg = String(e?.message || "Failed to load");
@@ -78,6 +73,7 @@ export default function HomePatient() {
   }, []);
 
 
+
   // Build index to map game id -> name/link
   const gameById = useMemo(() => {
     const map = new Map();
@@ -85,17 +81,26 @@ export default function HomePatient() {
     return map;
   }, [games]);
 
-  // Filter to THIS patient's prescriptions
+  // Filter patient prescriptions
   const myPrescriptions = useMemo(
     () =>
-      prescriptions
-        .filter((p) => p.patient === PATIENT_ID)
-        .sort(
-          (a, b) =>
-            new Date(b.created_at || 0).valueOf() -
-            new Date(a.created_at || 0).valueOf()
-        ),
+      [...prescriptions].sort(
+        (a, b) =>
+          new Date(b.created_at || 0).valueOf() -
+          new Date(a.created_at || 0).valueOf()
+      ),
     [prescriptions]
+  );
+
+  // Sorted sessions (newest first)
+  const mySessions = useMemo(
+    () =>
+      [...sessions].sort(
+        (a, b) =>
+          new Date(b.start_time || 0).valueOf() -
+          new Date(a.start_time || 0).valueOf()
+      ),
+    [sessions]
   );
 
   const assignedActive = useMemo(
@@ -110,11 +115,6 @@ export default function HomePatient() {
     <>
       <h2>Welcome, {username || 'Patient'}!</h2>
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h4>Request Treatment</h4>
-          <button title="Add">＋</button>
-        </div>
-
         <h3 style={{ marginTop: "1rem" }}>Assigned Games:</h3>
         {assignedActive.length === 0 ? (
           <p>No active prescriptions.</p>
@@ -124,9 +124,8 @@ export default function HomePatient() {
               const g = gameById.get(p.game);
               const name = g?.name ?? `Game #${p.game}`;
               // TODO: Adjust play link to real game-playing route
-              //const playHref = `/play/${p.game}`;
-              // HARD-CODED LINK TO UNITY WEBGL BUILD
-              const playHref = "/game/index.html";
+              // HARD-CODED LINK TO UNITY WEBGL BUILD of attention game only
+              const playHref = `/game/index.html?game_id=${p.game}&prescription_id=${p.id}`;
               return (
                 <li
                   key={`rx-${p.id}`}
@@ -141,32 +140,39 @@ export default function HomePatient() {
         )}
 
         <h3 style={{ marginTop: "1rem" }}>History</h3>
-        {myPrescriptions.length === 0 ? (
-          <p>No history yet.</p>
+        {mySessions.length === 0 ? (
+          <p>No sessions yet.</p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Prescription</th>
+                <th>Session</th>
                 <th>Date</th>
                 <th>Game</th>
+                <th>Prescription</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {myPrescriptions.map((p) => {
-                const g = gameById.get(p.game);
-                const gameName = g?.name ?? `Game #${p.game}`;
-                // TODO: later track completion on the prescription, swap in real field.
-                const status = p.active ? "Pending" : "Inactive";
+              {mySessions.map((s) => {
+                const g = gameById.get(s.game);
+                const gameName = g?.name ?? `Game #${s.game}`;
+                const prescLabel = s.prescription ? `Rx #${s.prescription}` : "—";
+                const status = s.end_time ? "Completed" : "In progress";
+
                 return (
-                  <tr key={`row-${p.id}`}>
-                    <td>{`Rx #${p.id}`}</td>
-                    <td>{formatDate(p.created_at)}</td>
+                  <tr key={`sess-${s.id}`}>
+                    <td>{`Session #${s.id}`}</td>
+                    <td>{formatDate(s.start_time)}</td>
                     <td>
-                      {/* Adjust report*/}
-                      <a href={`/reports/${p.id}`}>{gameName}</a>
+                      {/* TODO: if reports are session-based, switch to /reports/sessions/${s.id} */}
+                      {s.prescription ? (
+                        <a href={`/reports/${s.prescription}`}>{gameName}</a>
+                      ) : (
+                        gameName
+                      )}
                     </td>
+                    <td>{prescLabel}</td>
                     <td>{status}</td>
                   </tr>
                 );

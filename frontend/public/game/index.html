@@ -32,6 +32,28 @@
       var fullscreenButton = document.querySelector("#unity-fullscreen-button");
       var warningBanner = document.querySelector("#unity-warning");
 
+      // --- NEW: helpers to get params + token ---
+      function getQueryParams() {
+        const url = new URL(window.location.href);
+        return {
+          gameId: url.searchParams.get("game_id"),
+          prescriptionId: url.searchParams.get("prescription_id"),
+        };
+      }
+
+      function getAuthToken() {
+        try {
+          const raw = sessionStorage.getItem("authTokens");
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && parsed.access ? parsed.access : null;
+        } catch (e) {
+          console.error("Failed to read authTokens from sessionStorage", e);
+          return null;
+        }
+      }
+      // --- end NEW helpers ---
+
       // Shows a temporary message banner/ribbon for a few seconds, or
       // a permanent error message on top of the canvas if type=='error'.
       // If type=='warning', a yellow highlight color is used.
@@ -105,16 +127,54 @@
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                loadingBar.style.display = "none";
-                fullscreenButton.onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+        }).then((unityInstance) => {
+          loadingBar.style.display = "none";
+          fullscreenButton.onclick = () => {
+            unityInstance.SetFullscreen(1);
+          };
 
+          // --- NEW: send auth + metadata into Unity ---
+          const { gameId, prescriptionId } = getQueryParams();
+          const bearerToken = getAuthToken();
+
+          console.log("Unity config from host page:", {
+            bearerToken,
+            gameId,
+            prescriptionId,
+          });
+
+          // If something is missing, you can log/warn
+          if (!bearerToken) {
+            console.warn("No bearer token found in sessionStorage.authTokens");
+          }
+          if (!gameId || !prescriptionId) {
+            console.warn("Missing game_id or prescription_id in URL query");
+          }
+
+          const payload = JSON.stringify({
+            bearerToken,
+            gameId: Number(gameId),
+            prescriptionId: Number(prescriptionId),
+          });
+
+          // 1) Send config into your EegSessionUploader component
+          unityInstance.SendMessage(
+            "EegSessionUploaderGO",      // GameObject name in Unity
+            "ApplyConfigFromJson",      // C# method name
+            payload
+          );
+
+          // 2) Then start the session
+          unityInstance.SendMessage(
+            "EegSessionUploaderGO",
+            "BeginSession"
+          );
+          // --- end NEW ---
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      
       document.body.appendChild(script);
 
     </script>

@@ -5,14 +5,12 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import HomePatient from "./pages/HomePatient";
 import HomeSpecialist from "./pages/HomeSpecialist";
+import Assign from "./pages/Assign";
 import Reports from "./pages/Reports";
 import Games from "./pages/Games";
 //import Play from "./pages/Play";
 import NotFound from "./pages/NotFound";
 import GamePage from "./pages/GamePage.jsx";
-
-// TODO: plug in real auth later; for now a simple flag in sessionStorage
-const getUserType = () => sessionStorage.getItem("mm_userType"); // "patient" | "specialist" | null
 
 export default function App() {
   return (
@@ -28,6 +26,7 @@ export default function App() {
           <Route path="/home/patient" element={<HomePatient />} />
           <Route path="/home/specialist" element={<HomeSpecialist />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/assign" element={<Assign />} />
           <Route path="/games" element={<Games />} />
           <Route path="/play" element={<GamePage/>} />
         </Route>

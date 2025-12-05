@@ -1,4 +1,5 @@
-// src/pages/Games.jsx
+// This file is no longer used. Keeping for reference and possible later updates.
+// TODO: replace with free play game section for patients?
 import { useEffect, useState, useCallback } from 'react';
 import {
   fetchGames,

@@ -1,8 +1,10 @@
 import { tokenStore } from "./tokenStore";
+import { jwtDecode } from "jwt-decode";
+
 
 // ---------- REGISTER ----------
 
-export async function registerUser({ email, username, password, password2, is_doctor, is_patient}) {
+export async function registerUser({ email, username, password, password2}) {
     const headers = {
         'Content-Type': 'application/json',
     };
@@ -14,9 +16,7 @@ export async function registerUser({ email, username, password, password2, is_do
             email,
             username,
             password,
-            password2,
-            is_doctor,
-            is_patient
+            password2
         }),
     });
 
@@ -52,8 +52,18 @@ export async function loginUser({ email, password }) {
         throw new Error("Login response missing tokens");
     }
 
+    // store token
     tokenStore.set({ access: data.access, refresh: data.refresh });
-    return data;
+
+    // decode the access token to read role info
+    // payload.is_doctor and payload.is_patient come from CustomTokenObtainPairSerializer in backend
+    const payload = jwtDecode(data.access);
+
+    // string to use on the frontend
+    const userType = payload.is_doctor ? "specialist" : "patient";
+
+    // return everything 
+    return { ...data, payload, userType };
 }
 
 export function logoutUser() {

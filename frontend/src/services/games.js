@@ -17,21 +17,22 @@ async function jsonOrThrow(res) {
 
 // ---------- GAMES ----------
 
-// GET all games (auth optional; if endpoint requires auth, authFetch will attach token)
+// GET all games
 export async function fetchGames() {
     const res = await authFetch("/api/gamesession/games/");
     return jsonOrThrow(res);
 }
 
-// POST create a game (requires auth)
-export async function createGame(game) {
-    const res = await authFetch("/api/gamesession/games/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(game),
-    });
-    return jsonOrThrow(res);
-}
+// // Legacy
+// // POST create a game (requires auth)
+// export async function createGame(game) {
+//     const res = await authFetch("/api/gamesession/games/", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(game),
+//     });
+//     return jsonOrThrow(res);
+// }
 
 // ---------- PRESCRIPTIONS ----------
 
@@ -49,4 +50,50 @@ export async function createPrescription({ patient, game, notes = "" }) {
       body: JSON.stringify({ patient, game, notes }),
     });
     return jsonOrThrow(res);
+}
+
+// ---------- SESSIONS ----------
+
+// GET my (patient) sessions (requires auth)
+export async function fetchSessions() {
+    const res = await authFetch("/api/gamesession/sessions/me/");
+    return jsonOrThrow(res);
+}
+
+export async function getSessionsByUserId(patientId) {
+  const res = await authFetch(
+    `/api/gamesession/sessions/${patientId}/`
+  );
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch sessions for patient ${patientId}: HTTP ${res.status}`
+    );
+  }
+  return res.json();
+}
+
+// For patients looking at their own EEG data
+export async function getMyEegBySession(sessionId) {
+  const res = await authFetch(
+    `/api/dashboards/eeg/get_my_eeg_by_session/${sessionId}/`
+  );
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch my EEG for session ${sessionId}: HTTP ${res.status}`
+    );
+  }
+  return res.json();
+}
+
+// For doctors looking at a specific patient's session
+export async function getEegBySessionDoctor(patientId, sessionId) {
+  const res = await authFetch(
+    `/api/dashboards/eeg/get_eeg_by_session_doctor/${patientId}/${sessionId}/`
+  );
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch EEG for patient ${patientId} session ${sessionId}: HTTP ${res.status}`
+    );
+  }
+  return res.json();
 }

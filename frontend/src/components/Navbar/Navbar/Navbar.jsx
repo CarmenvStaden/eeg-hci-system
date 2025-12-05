@@ -1,10 +1,23 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Bar, Inner, Tabs, Right } from "./Navbar.styles";
 
+const PATIENT_LINKS = [
+  { to: "/home/patient", label: "Home" },
+  { to: "/reports", label: "Reports" },
+];
+
+const SPECIALIST_LINKS = [
+  { to: "/home/specialist", label: "Home" },
+  { to: "/assign", label: "Games" },
+  { to: "/reports", label: "Reports" },
+];
+
 export default function Navbar() {
   const navigate = useNavigate();
   const userType = sessionStorage.getItem("mm_userType"); // mock auth
-  const homePath = userType === "specialist" ? "/home/specialist" : "/home/patient";
+
+  const homePath =
+    userType === "specialist" ? "/home/specialist" : "/home/patient";
 
   const goHome = () => {
     if (userType === "patient") navigate("/home/patient");
@@ -17,6 +30,11 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const links =
+    userType === "specialist"
+      ? SPECIALIST_LINKS
+      : PATIENT_LINKS; // default to patient set if anything else
+
   return (
     <Bar>
       <Inner>
@@ -25,18 +43,15 @@ export default function Navbar() {
         </a>
 
         <Tabs>
-        <NavLink
-            to={homePath}
-            className={({ isActive }) => (isActive ? "active" : "")}
-        >
-            Home
-        </NavLink>
-        <NavLink to="/games" className={({ isActive }) => (isActive ? "active" : "")}>
-            Games
-        </NavLink>
-        <NavLink to="/reports" className={({ isActive }) => (isActive ? "active" : "")}>
-            Reports
-        </NavLink>
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              {link.label}
+            </NavLink>
+          ))}
         </Tabs>
 
         <Right>

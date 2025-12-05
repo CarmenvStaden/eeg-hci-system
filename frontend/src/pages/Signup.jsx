@@ -17,7 +17,6 @@ export default function Signup() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [type, setType] = useState("patient");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -31,12 +30,9 @@ export default function Signup() {
         username,
         password,
         password2,
-        is_doctor: type === "specialist",
-        is_patient: type === "patient",
       });
 
-      sessionStorage.setItem("mm_userType", type);
-      navigate(type === "patient" ? "/home/patient" : "/home/specialist");
+      navigate("/login");
     } catch (err) {
       setError(err.message);
     }
@@ -74,14 +70,10 @@ export default function Signup() {
           onChange={(e) => setPassword2(e.target.value)}
           required
         />
-        <label style={{ display: "grid", gap: "0.3rem" }}>
-          <span>I am a...</span>
-          <select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="patient">Patient</option>
-            <option value="specialist">Specialist</option>
-          </select>
-        </label>
         <button type="submit">Create Account</button>
+        <div style={{ textAlign: "center" }}>
+          <a href="/login">Already have an account?</a>
+        </div>
       </form>
     </Card>
   );

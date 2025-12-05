@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import HealthCheck from "../components/HealthCheck.jsx";
 import { loginUser } from "../services/auth";
 
 const Card = styled.div`
@@ -17,16 +16,19 @@ const Card = styled.div`
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [type, setType] = useState("patient");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const onSubmit = async () => {
     setError(null);
     try {
-      await loginUser({ email, password });
-      sessionStorage.setItem("mm_userType", type);
-      navigate(type === "patient" ? "/home/patient" : "/home/specialist");
+      const { userType } = await loginUser({ email, password });
+
+      // store role for later use 
+      sessionStorage.setItem("mm_userType", userType);
+
+      // route based on backend role
+      navigate(userType === "patient" ? "/home/patient" : "/home/specialist");
     } catch (e) {
       setError(e.message);
     }
@@ -57,11 +59,6 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <label style={{ display: "grid", gap: "0.3rem" }}>
-            <span>I am a...</span>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="patient">Patient</option>
-              <option value="specialist">Specialist</option>
-            </select>
           </label>
           <div
             style={{
@@ -69,7 +66,7 @@ export default function Login() {
               gap: "0.5rem",
               marginTop: "0.2rem",
               alignItems: "center",
-              justifyContent: "center", // center the button too
+              justifyContent: "center", // center the button
             }}
           >
             <button onClick={onSubmit}>Login</button>

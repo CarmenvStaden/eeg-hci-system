@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "jspdf": "^3.0.4",
+    "jwt-decode": "^4.0.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
+    "recharts": "^3.5.0",
     "styled-components": "^6.1.19",
     "ws": "^8.18.3"
   },
