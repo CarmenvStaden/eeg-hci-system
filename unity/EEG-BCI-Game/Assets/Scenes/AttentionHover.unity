@@ -670,7 +670,7 @@ GameObject:
   - component: {fileID: 912751045}
   - component: {fileID: 912751046}
   m_Layer: 0
-  m_Name: EegSessionUploader
+  m_Name: EegSessionUploaderGO
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

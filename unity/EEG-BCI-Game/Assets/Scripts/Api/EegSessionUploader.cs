@@ -6,6 +6,14 @@ using static TgcClient; // for EegPower
 
 public class EegSessionUploader : MonoBehaviour
 {
+    [System.Serializable]
+    public class UnityEegConfig
+    {
+        public string bearerToken;
+        public int gameId;
+        public int prescriptionId;
+    }
+
     [Header("Links")]
     public TgcClient tgc; // assigned TgcClient in Inspector
 
@@ -52,6 +60,38 @@ public class EegSessionUploader : MonoBehaviour
 #endif
     }
 
+    private bool isConfigured = false;
+
+    public void ApplyConfigFromJson(string json)
+    {
+        Debug.Log("[EegSessionUploader] ApplyConfigFromJson: " + json);
+        var cfg = JsonUtility.FromJson<UnityEegConfig>(json);
+        if (cfg == null)
+        {
+            Debug.LogError("[EegSessionUploader] Failed to parse config JSON.");
+            return;
+        }
+
+        bearerToken = cfg.bearerToken;
+        gameId = cfg.gameId;
+        prescriptionId = cfg.prescriptionId;
+
+        isConfigured = true;
+    }
+
+    public void BeginSession()
+    {
+        if (!isConfigured)
+        {
+            Debug.LogWarning("[EegSessionUploader] BeginSession called before config applied.");
+            return;
+        }
+
+        // kick off session start
+        Debug.Log($"[EegSessionUploader] BeginSession called. bearerToken prefix={bearerToken?.Substring(0, 12)}, gameId={gameId}, prescriptionId={prescriptionId}");
+        StartCoroutine(StartSessionAndBeginPosting());
+    }
+
     void Start()
     {
         if (tgc == null)
@@ -65,8 +105,7 @@ public class EegSessionUploader : MonoBehaviour
         tgc.MeditationChanged += OnMeditation;
         tgc.EegPowerReceived += OnBands;
 
-        // kick off session start
-        StartCoroutine(StartSessionAndBeginPosting());
+        //StartCoroutine(StartSessionAndBeginPosting());
     }
 
     void OnAttention(int v) => latestAttention = v;
